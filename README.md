@@ -144,9 +144,11 @@ message_if(station, station.is_low())    # calls it first — a bool, not a func
 - `sorted()`. You need its `key=` and `reverse=` arguments, and no lesson walks
   through them. Read about it on
   [W3Schools](https://www.w3schools.com/python/ref_func_sorted.asp).
-- `abc`. The module `ABC` and `abstractmethod` come from. The
-  [Python docs](https://docs.python.org/3/library/abc.html) are the reference,
-  and you only need the first two paragraphs.
+- `abc`. The module `ABC` and `abstractmethod` come from. Read the
+  [`ABC`](https://docs.python.org/3/library/abc.html#abc.ABC) and
+  [`abstractmethod`](https://docs.python.org/3/library/abc.html#abc.abstractmethod)
+  entries in the Python docs and skip the rest of that page — the opening is
+  about machinery you do not need yet.
 
 ## From Scratch
 
