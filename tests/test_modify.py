@@ -1,11 +1,76 @@
+import ast
+import inspect
+import textwrap
+
+
+def attributes_set_on(instance):
+    """The attribute names stored on this instance rather than on its class.
+
+    An attribute written in the class body is shared by every instance, so it
+    does not appear here. One assigned to self in __init__ does.
+    """
+    return set(vars(instance))
+
+
+def assigns_in_class_body(cls):
+    """The names assigned directly in a class body, read with the ast module.
+
+    The source is parsed rather than searched as text, so a name mentioned in a
+    comment or a docstring never counts.
+    """
+    source = textwrap.dedent(inspect.getsource(cls))
+    body = ast.parse(source).body[0].body
+    names = set()
+    for node in body:
+        if isinstance(node, ast.Assign):
+            names.update(t.id for t in node.targets if isinstance(t, ast.Name))
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            names.add(node.target.id)
+    return names
+
+def code_of(func):
+    """A function's source with its comments and docstring removed.
+
+    A test that bans a substring has to look at code only. Reading raw source
+    fails a fellow who mentions the banned thing in a comment -- "no isinstance
+    here" would fail a check for "isinstance" -- which is a correct answer
+    rejected for its prose.
+    """
+    source = textwrap.dedent(inspect.getsource(func))
+    tree = ast.parse(source)
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Module)):
+            body = node.body
+            if (body and isinstance(body[0], ast.Expr)
+                    and isinstance(body[0].value, ast.Constant)
+                    and isinstance(body[0].value.value, str)):
+                node.body = body[1:] or [ast.Pass()]
+    return ast.unparse(ast.fix_missing_locations(tree))
+
+def as_written(module, name, cls=None):
+    """One function's body as it appears in the file, with decorators ignored.
+
+    Reading a decorated function at runtime gives you the wrapper, so its own
+    body is out of reach. Parsing the file instead shows what the fellow wrote,
+    and works whatever shape their decorator took -- a closure, a class with
+    __call__, or functools.wraps on top of either.
+    """
+    tree = ast.parse(inspect.getsource(module))
+    scope = tree.body
+    if cls is not None:
+        scope = next(n.body for n in tree.body
+                     if isinstance(n, ast.ClassDef) and n.name == cls)
+    found = next((n for n in scope
+                  if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+                  and n.name == name), None)
+    assert found is not None, f"Keep a function named {name}."
+    return "\n".join(ast.unparse(stmt) for stmt in found.body)
+
+
 from modify import Bike, CargoBike, ClassicBike, Dock, ElectricBike, Station, busiest_first, late_fee
 
 
 TEST_SUITE_NAME = "Modify Tests"
-
-
-import inspect
-
 
 
 def test_the_fees_did_not_move():
@@ -17,7 +82,7 @@ def test_the_fees_did_not_move():
 
 def test_late_fee_no_longer_asks_what_kind_of_bike():
     """late_fee - no isinstance and no type left in the function"""
-    source = inspect.getsource(late_fee)
+    source = code_of(late_fee)
 
     assert "isinstance" not in source, "Ask the bike for its fee instead."
     assert "type(" not in source, "Ask the bike for its fee instead."
@@ -95,10 +160,6 @@ def test_the_three_old_methods_are_gone():
             f"Delete {name}. bikes_where replaces it."
 
 
-import inspect
-
-
-
 def test_busiest_first_orders_by_rides_started():
     """busiest_first - most rides first"""
     docks = [Dock("Grand Army", 14), Dock("Borough Hall", 31), Dock("Prospect", 22)]
@@ -127,7 +188,7 @@ def test_busiest_first_handles_a_tie():
 
 def test_busiest_first_uses_sorted_with_a_key():
     """busiest_first - the hand-rolled version is gone"""
-    source = inspect.getsource(busiest_first)
+    source = code_of(busiest_first)
 
     assert "sorted(" in source, "Use sorted() with a key."
     assert "key=" in source, "Tell sorted what to sort by with key=."
