@@ -17,7 +17,7 @@ Let each kind of object answer for itself, and start passing functions around as
 - [Modify](#modify)
   - [Question 5: `late_fee`](#question-5-late_fee)
   - [Question 6: `Station.bikes_where`](#question-6-stationbikes_where)
-  - [Question 7: `busiest_first`](#question-7-busiest_first)
+  - [Question 7: `make_discounter`](#question-7-make_discounter)
 - [Debug](#debug)
   - [Question 8: `restock_message`](#question-8-restock_message)
   - [Question 9: `Screening`](#question-9-screening)
@@ -400,34 +400,42 @@ questions into one that answers any question of that shape.
 Call the parameter something that says what it is for, such as `test` or
 `matches`. It is a function, so you call it: `test(bike)`.
 
-### Question 7: `busiest_first`
+### Question 7: `make_discounter`
 
-`busiest_first` sorts docks by how many rides started there, most first. It does
-it by building a list of `(rides, dock)` pairs, sorting those, reversing, and
-pulling the docks back out. It works, and it is eleven lines of code that
-`sorted` does in one.
+`discounted_price` takes a price and a discount. Every caller in the member
+area passes `0.10`, and every caller in the staff area passes `0.25`. The
+discount is passed thousands of times a day and it never changes.
 
-Rewrite it using `sorted()` with a `key=` function. The code is in
-`src/modify.py`.
+Rewrite it so the discount is given **once**, and what comes back is a function
+that only needs a price.
+
+The code is in `src/modify.py`. When you are done:
+
+- `make_discounter(discount)` returns a **function** that takes a price.
+- `member_price` and `staff_price` are built from it, at the bottom of the file.
+- `discounted_price` is **deleted**. A test checks it is gone.
 
 ```python
-docks = [Dock("Grand Army", 14), Dock("Borough Hall", 31), Dock("Prospect", 22)]
+member_price = make_discounter(0.10)
+staff_price = make_discounter(0.25)
 
-[dock.name for dock in busiest_first(docks)]
-# ["Borough Hall", "Prospect", "Grand Army"]
-
-docks[0].name                    # "Grand Army" — the original is untouched
+member_price(20.00)              # 18.0
+staff_price(20.00)               # 15.0
+member_price(20.00)              # 18.0 — still 10%, building the second changed nothing
 ```
 
-Two things to find in the docs rather than work around:
+`make_discounter` has returned long before `member_price(20.00)` runs, so its
+local `discount` should be gone. The inner function reads it anyway.
 
-- `sorted` takes `reverse=True`, so you do not need to sort and then reverse.
-- `key=` takes a function of one item that returns the value to sort by.
+That is a **closure**: an inner function keeps access to the variables of the
+function that built it, for as long as the inner function exists. Each call to
+`make_discounter` makes a new one with its own `discount`, which is why
+`member_price` and `staff_price` never interfere.
 
-The pair-building version has a bug you inherit if you keep it: two docks with
-the same ride count get compared by their second element, the `Dock` object
-itself, which Python cannot order. `sorted` with a `key` never compares the
-objects, so the bug disappears rather than being fixed. A test covers it.
+Return the inner function. Do not call it.
+
+Keep the rounding exactly as it is — this is a refactor, so the prices must not
+move.
 
 ## Debug
 

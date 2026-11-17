@@ -70,22 +70,15 @@ class Station:
         pass
 
 
-class Dock:
-    def __init__(self, name, rides_started):
-        self.name = name
-        self.rides_started = rides_started
-
-    def __repr__(self):
-        return f"Dock({self.name!r}, {self.rides_started})"
+def discounted_price(price, discount):
+    return round(price * (1 - discount), 2)
 
 
-def busiest_first(docks):
-    pairs = []
-    for dock in docks:
-        pairs.append((dock.rides_started, dock))
-    pairs.sort()
-    pairs.reverse()
-    busiest = []
-    for pair in pairs:
-        busiest.append(pair[1])
-    return busiest
+def make_discounter(discount):
+    """Replace discounted_price with this."""
+    pass
+
+
+# Build these two from make_discounter once it works.
+member_price = None
+staff_price = None

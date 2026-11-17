@@ -67,7 +67,7 @@ def as_written(module, name, cls=None):
     return "\n".join(ast.unparse(stmt) for stmt in found.body)
 
 
-from modify import Bike, CargoBike, ClassicBike, Dock, ElectricBike, Station, busiest_first, late_fee
+from modify import Bike, CargoBike, ClassicBike, ElectricBike, Station, late_fee, make_discounter, member_price, staff_price
 
 
 TEST_SUITE_NAME = "Modify Tests"
@@ -160,37 +160,40 @@ def test_the_three_old_methods_are_gone():
             f"Delete {name}. bikes_where replaces it."
 
 
-def test_busiest_first_orders_by_rides_started():
-    """busiest_first - most rides first"""
-    docks = [Dock("Grand Army", 14), Dock("Borough Hall", 31), Dock("Prospect", 22)]
-
-    assert [dock.name for dock in busiest_first(docks)] == \
-        ["Borough Hall", "Prospect", "Grand Army"]
+import modify
 
 
-def test_busiest_first_leaves_the_original_alone():
-    """busiest_first - sorted returns a new list"""
-    docks = [Dock("Grand Army", 14), Dock("Borough Hall", 31)]
-    busiest_first(docks)
 
-    assert docks[0].name == "Grand Army"
-
-
-def test_busiest_first_handles_a_tie():
-    """busiest_first - two docks with the same count must not be compared to each other"""
-    docks = [Dock("Grand Army", 20), Dock("Borough Hall", 20), Dock("Prospect", 5)]
-
-    names = [dock.name for dock in busiest_first(docks)]
-
-    assert names[2] == "Prospect"
-    assert set(names[:2]) == {"Grand Army", "Borough Hall"}
+def test_make_discounter_returns_a_function():
+    """make_discounter - it hands back a function, it does not discount anything itself"""
+    assert callable(make_discounter(0.10)), \
+        "Return the inner function, with no parentheses."
 
 
-def test_busiest_first_uses_sorted_with_a_key():
-    """busiest_first - the hand-rolled version is gone"""
-    source = code_of(busiest_first)
+def test_the_returned_function_uses_its_own_discount():
+    """make_discounter - the closure remembers the discount it was built with"""
+    assert make_discounter(0.10)(20.00) == 18.00
+    assert make_discounter(0.25)(20.00) == 15.00
 
-    assert "sorted(" in source, "Use sorted() with a key."
-    assert "key=" in source, "Tell sorted what to sort by with key=."
-    assert ".reverse()" not in source, "sorted takes reverse=True."
-    assert "append" not in source, "sorted returns the list, so nothing needs appending."
+
+def test_two_discounters_do_not_share_a_discount():
+    """make_discounter - each call builds a new closure"""
+    member = make_discounter(0.10)
+    staff = make_discounter(0.25)
+
+    assert member(20.00) == 18.00
+    assert staff(20.00) == 15.00
+    assert member(20.00) == 18.00, "Building the second one must not change the first."
+
+
+def test_the_two_built_functions_work():
+    """make_discounter - member_price and staff_price are built from it"""
+    assert callable(member_price), "Build member_price from make_discounter(0.10)."
+    assert member_price(20.00) == 18.00
+    assert staff_price(20.00) == 15.00
+
+
+def test_the_old_function_is_gone():
+    """make_discounter - discounted_price was deleted"""
+    assert not hasattr(modify, "discounted_price"), \
+        "Delete discounted_price. make_discounter replaces it."
