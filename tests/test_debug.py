@@ -67,70 +67,39 @@ def as_written(module, name, cls=None):
     return "\n".join(ast.unparse(stmt) for stmt in found.body)
 
 
-from debug import Rental, Screening, Station, Tandem, fleet_total, message_if, restock_message
+from debug import Scooter, charging_list, needs_charging, scooters_where
 
 
 TEST_SUITE_NAME = "Debug Tests"
 
 
-def test_restock_message_warns_a_low_station():
-    """restock_message - it no longer raises, and it warns when bikes are low"""
-    assert restock_message(Station("Grand Army", 1)) == "Grand Army: send bikes"
+def scooters():
+    return [Scooter("S1", charge=80, needs_repair=False),
+            Scooter("S2", charge=10, needs_repair=False),
+            Scooter("S3", charge=5, needs_repair=True)]
 
 
-def test_restock_message_says_ok_when_there_are_enough():
-    """restock_message - a station with enough bikes needs no warning"""
-    assert restock_message(Station("Borough Hall", 9)) == "Borough Hall: ok"
+def test_charging_list_finds_the_low_scooters():
+    """charging_list - it no longer raises, and it returns the scooters below 20% charge"""
+    assert [scooter.serial for scooter in charging_list(scooters())] == ["S2", "S3"]
 
 
-def test_restock_message_passes_the_function_not_its_result():
-    """restock_message - is_low is handed over uncalled"""
-    source = code_of(restock_message)
-
-    assert "is_low()" not in source, \
-        "Pass station.is_low, with no parentheses. message_if calls it itself."
-    assert "is_low" in source, "message_if still needs to be given the check."
+def test_charging_list_of_full_scooters_is_empty():
+    """charging_list - no scooter needs charging, so the list is empty"""
+    assert charging_list([Scooter("S1", charge=80, needs_repair=False)]) == []
 
 
-def test_message_if_was_left_alone():
-    """restock_message - message_if was never the bug"""
-    source = code_of(message_if)
+def test_charging_list_passes_the_function_not_its_result():
+    """charging_list - needs_charging is passed with no parentheses"""
+    source = code_of(charging_list)
 
-    assert "check()" in source, \
-        "message_if calls the function it is given. That part was already right."
-
-
-import pytest
+    assert "needs_charging(" not in source, \
+        "Pass needs_charging with no parentheses. scooters_where calls it itself."
+    assert "needs_charging" in source, "scooters_where still needs to be given needs_charging."
 
 
-
-def test_screening_can_now_be_made():
-    """Screening - it implements both abstract methods, so it is no longer abstract"""
-    screening = Screening("SC1", 40)
-
-    assert screening.hourly_rate() == 6.00
-    assert isinstance(screening, Rental)
-
-
-def test_screening_keeps_its_own_rule_for_being_rentable():
-    """Screening - is_rentable was already correct and still is"""
-    assert Screening("SC1", 40).is_rentable() is True
-    assert Screening("SC2", 0).is_rentable() is False
-
-
-def test_the_abstract_base_class_was_not_weakened():
-    """Screening - Rental still refuses an incomplete subclass"""
-    assert Rental.__abstractmethods__ == {"is_rentable", "hourly_rate"}, \
-        "Keep both @abstractmethod decorators on Rental."
-
-    class Trailer(Rental):
-        def is_rentable(self):
-            return True
-
-    with pytest.raises(TypeError):
-        Trailer()
-
-
-def test_the_mixed_fleet_adds_up():
-    """Screening - one loop over both kinds, each answering for itself"""
-    assert fleet_total([Tandem("T1", False), Screening("SC1", 40)], 2) == 25.00
+def test_the_other_functions_were_left_alone():
+    """charging_list - needs_charging and scooters_where were never the bug"""
+    assert needs_charging(Scooter("S2", charge=10, needs_repair=False)) is True
+    assert "matches(scooter)" in code_of(scooters_where), \
+        "scooters_where calls the function it is given. That part was already right."

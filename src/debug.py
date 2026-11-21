@@ -1,56 +1,18 @@
-from abc import ABC, abstractmethod
-
-
-class Station:
-    def __init__(self, name, bikes_available):
-        self.name = name
-        self.bikes_available = bikes_available
-
-    def is_low(self):
-        return self.bikes_available < 3
-
-
-def message_if(station, check, message):
-    """Already correct. Do not change it."""
-    if check():
-        return f"{station.name}: {message}"
-    return f"{station.name}: ok"
-
-
-def restock_message(station):
-    return message_if(station, station.is_low(), "send bikes")
-
-
-class Rental(ABC):
-    @abstractmethod
-    def is_rentable(self):
-        pass
-
-    @abstractmethod
-    def hourly_rate(self):
-        pass
-
-
-class Tandem(Rental):
-    def __init__(self, serial, needs_repair):
+class Scooter:
+    def __init__(self, serial, charge, needs_repair):
         self.serial = serial
+        self.charge = charge
         self.needs_repair = needs_repair
 
-    def is_rentable(self):
-        return not self.needs_repair
 
-    def hourly_rate(self):
-        return 6.50
+def needs_charging(scooter):
+    return scooter.charge < 20
 
 
-class Screening(Rental):
-    def __init__(self, serial, seats_left):
-        self.serial = serial
-        self.seats_left = seats_left
-
-    def is_rentable(self):
-        return self.seats_left > 0
+def scooters_where(scooters, matches):
+    """Already correct. Do not change it."""
+    return [scooter for scooter in scooters if matches(scooter)]
 
 
-def fleet_total(rentals, hours):
-    return sum(rental.hourly_rate() * hours for rental in rentals)
+def charging_list(scooters):
+    return scooters_where(scooters, needs_charging())

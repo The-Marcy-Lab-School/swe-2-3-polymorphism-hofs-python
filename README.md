@@ -1,26 +1,25 @@
 # Polymorphism and Functions as Values
 
-Let each kind of object answer for itself, and start passing functions around as values.
+Practice writing classes that share the same methods, so that one loop works on all of them, and practice passing functions to other functions.
 
-**Practicing:** polymorphism, duck typing, abstract base classes, contracts, higher-order functions, `sorted(key=)`, `lambda`
+**Practicing:** polymorphism, duck typing, abstract base classes, testing an abstract base class, higher-order functions, callbacks, `lambda`, `sorted()`, `max()`, `key=`, closures
 
 - [AI Use on This Assignment](#ai-use-on-this-assignment)
 - [Setup](#setup)
 - [Before You Start](#before-you-start)
   - [Syntax to recognize](#syntax-to-recognize)
-  - [Look these up yourself](#look-these-up-yourself)
 - [From Scratch](#from-scratch)
   - [Question 1: `fleet_revenue`](#question-1-fleet_revenue)
   - [Question 2: `Scooter`](#question-2-scooter)
   - [Question 3: `Rentable` and `Helmet`](#question-3-rentable-and-helmet)
-  - [Question 4: `cheapest_first`](#question-4-cheapest_first)
+  - [Question 4: Testing `Rentable`](#question-4-testing-rentable)
+  - [Question 5: `Fleet` and `is_cheap`](#question-5-fleet-and-is_cheap)
+  - [Question 6: Sorting the Fleet](#question-6-sorting-the-fleet)
+  - [Question 7: `rate_under`](#question-7-rate_under)
 - [Modify](#modify)
-  - [Question 5: `late_fee`](#question-5-late_fee)
-  - [Question 6: `Station.bikes_where`](#question-6-stationbikes_where)
-  - [Question 7: `make_discounter`](#question-7-make_discounter)
+  - [Question 8: `late_fee`](#question-8-late_fee)
 - [Debug](#debug)
-  - [Question 8: `restock_message`](#question-8-restock_message)
-  - [Question 9: `Screening`](#question-9-screening)
+  - [Question 9: `charging_list`](#question-9-charging_list)
 - [Submitting](#submitting)
 - [Good luck!](#good-luck)
 
@@ -33,8 +32,8 @@ comes later, in Quarter 2, where the job becomes judging code rather than
 producing it.
 
 For this assignment that means asking it why a loop over a mixed list needs no
-`isinstance()`, or having it quiz you on the difference between `is_full` and
-`is_full()` until you can say which one a higher-order function wants. Ask it a
+`isinstance()`, or having it quiz you on the difference between `is_cheap` and
+`is_cheap()` until you can say which one a higher-order function wants. Ask it a
 hundred questions — that is the whole point. What you do not do is ask it for
 the answer. Paste this at the start of a chat and it will hold for the rest of
 the conversation:
@@ -64,7 +63,7 @@ git checkout -b draft
 ```
 
 Run `pytest` to test the entire assignment. To run one question, pass part of
-its name: `pytest -k Bike`. Every push runs the tests on GitHub and reports
+its name: `pytest -k scooter`. Every push runs the tests on GitHub and reports
 which ones passed in the **Actions** tab.
 
 Push before it is finished. Your instructor grades this against the rubric,
@@ -80,10 +79,7 @@ deactivate
 
 ## Before You Start
 
-Skim this section before you read the lessons, so you know what to look for in
-them. Classes, inheritance, `super()` and properties are all assumed here. The
-new material is **letting each object answer for itself**, and **passing
-functions around as values**.
+Skim this section before you read the lessons, so you know what to look for in them. Classes, inheritance, `super()` and properties are all assumed here. The new material is **classes that share the same methods**, and **functions passed around as values**.
 
 This assignment has three sections:
 
@@ -94,420 +90,389 @@ This assignment has three sections:
 <details>
 <summary><strong>Ideas to look for</strong> — the ideas behind the questions, if you want them up front</summary>
 
-Each question depends on one or more of these ideas. Part of the work is
-deciding which.
+Each question depends on one or more of these ideas. Part of the work is deciding which.
 
-| Idea | Lesson |
-| --- | --- |
-| One loop can work on several kinds of object as long as every one of them answers the same method name. The loop asks; it does not check. That is polymorphism, and the benefit belongs to the caller, which got simpler. | 2.5 |
-| An `isinstance` chain is the shape to watch for. It means a fact about one kind of object is living in a function instead of on that kind of object, so adding a new kind means editing the function. | 2.5 |
-| **Duck typing** means an object qualifies by answering the names a caller uses, not by what it inherits. Two classes can answer the same question for completely different reasons. | 2.5 |
-| The set of method names a group of classes must all answer is their **contract**. Writing it down is the first specification you record in this module. | 2.5 |
-| An **abstract base class** writes the contract into code. A class inheriting `ABC` with an `@abstractmethod` cannot be instantiated, and nor can a subclass that leaves one out — Python raises `TypeError` at the line that tried to build it. | 2.5 |
-| Enforcing a contract with an abstract base class and documenting a duck-typed one are both real choices. Each fails somewhere, and knowing where is the skill. | 2.5 |
-| Functions are values. They can be stored in a variable, passed to another function, and returned from one, exactly like a number or a list. | 2.6 |
-| A **higher-order function** takes a function as an argument or returns one. `sorted(items, key=...)` takes one. | 2.6 |
-| `sorted()` needs a `key=` function when the items are not numbers, because it cannot guess what to sort objects by. It returns a new list and leaves the original alone. | 2.6 |
-| A `lambda` writes a short function inline, where one is expected. It is worth using when the function is tiny and needed once. | 2.6 |
-| `is_low` is a function. `is_low()` is the value calling it produced. A higher-order function wants the first, because it calls the function itself. Passing the second is the most common mistake here, and the error is `'bool' object is not callable`. | 2.6 |
+| Idea                                                                                                                                                                                                                                | Lesson |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| A function that checks each object's class with `isinstance()` needs a new branch for every new kind of object, and a missed branch gives a wrong answer without an error.                                                          | 2.5    |
+| **Polymorphism** is different types of object responding to the same method call in their own way. When every kind of bike defines `hourly_rate()`, one loop can call `item.hourly_rate()` on each item without checking its class. | 2.5    |
+| **Duck typing** means code calls the method it needs without checking the object's class. Any object that has the method works, even one whose class inherits from nothing.                                                         | 2.5    |
+| A **contract** is the set of method names every type in a group promises to define, so that code using the group can call them on any member.                                                                                       | 2.5    |
+| An **abstract base class** inherits from `ABC` and marks methods with `@abstractmethod`. Creating the abstract base class itself, or a subclass that leaves out one of those methods, raises `TypeError`.                           | 2.5    |
+| `with pytest.raises(TypeError):` around the line that creates an object passes only if creating it raises a `TypeError`. A subclass that exists only to be refused is defined inside the test.                                      | 2.5    |
+| A function is a value: it can be stored in a variable and passed to another function, like a number or a list.                                                                                                                      | 2.6    |
+| A function passed into another function is a **callback**. A function that takes a function as an argument, or returns one, is a **higher-order function**. A callback that returns `True` or `False` is a **predicate**.           | 2.6    |
+| Pass a callback by writing its name with no parentheses. With parentheses, Python calls the function before the higher-order function starts.                                                                                       | 2.6    |
+| A **`lambda`** writes a one-expression function where it is used: `lambda item: item.hourly_rate()`.                                                                                                                                | 2.6    |
+| `sorted()`, `min()` and `max()` take a `key` callback and call it on each element to get the value to compare. `sorted()` returns a new list.                                                                                       | 2.6    |
+| A function defined inside another function and returned from it keeps access to the outer function's variables. That inner function is a **closure**.                                                                               | 2.6    |
 
 </details>
 
 ### Syntax to recognize
 
+This code combines examples from lessons 2.5 and 2.6. It runs as written, and the comments show what it prints.
+
 ```python
 from abc import ABC, abstractmethod
+from datetime import date, timedelta
 
 
-class Rentable(ABC):                     # an abstract base class
+class Event(ABC):                              # an abstract base class: an Event itself cannot be created
+    def __init__(self, name, date, capacity, base_price):
+        self.name = name
+        self.date = date
+        self.capacity = capacity
+        self.base_price = base_price
+
     @abstractmethod
-    def hourly_rate(self):               # named in the contract, no body
+    def ticket_price(self):                    # every subclass must define ticket_price()
+        return self.base_price
+
+    @abstractmethod
+    def can_refund(self, today):               # and can_refund(today)
         pass
 
 
-for bike in bikes:                       # one loop, several kinds
-    total += bike.hourly_rate()          # ask, do not check the type
+class Concert(Event):                          # a concrete class: it defines both abstract methods
+    SERVICE_FEE = 5
 
-sorted(bikes, key=rate_of)               # pass the function
-sorted(bikes, key=lambda b: b.rate)      # or write it inline
-sorted(docks, key=..., reverse=True)     # largest first
+    def __init__(self, name, date, capacity, base_price, performer):
+        super().__init__(name, date, capacity, base_price)
+        self.performer = performer
 
-def bikes_where(self, test):             # a method taking a function
-    return [b for b in self.bikes if test(b)]
+    def ticket_price(self):
+        return super().ticket_price() + Concert.SERVICE_FEE
 
-message_if(station, station.is_low)      # pass it
-message_if(station, station.is_low())    # calls it first — a bool, not a function
+    def can_refund(self, today):
+        return today <= self.date - timedelta(days=7)
+
+
+class Screening(Event):
+    def ticket_price(self):
+        return super().ticket_price()
+
+    def can_refund(self, today):
+        return False
+
+
+class MuseumTour:                              # inherits from nothing, but defines the same two methods
+    def __init__(self, name, date, price):
+        self.name = name
+        self.date = date
+        self.price = price
+
+    def ticket_price(self):
+        return self.price
+
+    def can_refund(self, today):
+        return today < self.date
+
+
+class Venue:
+    def __init__(self, name):
+        self.name = name
+        self.events = []
+
+    def add_event(self, event):
+        self.events.append(event)
+
+    def find_events(self, matches):            # a higher-order function: it takes a function
+        return [event for event in self.events if matches(event)]
+
+
+def is_in_december(event):                     # a predicate: it returns True or False
+    return event.date.month == 12
+
+
+def matches_month(month):                      # a higher-order function: it returns a function
+    def matches(event):                        # a closure: it keeps access to month
+        return event.date.month == month
+    return matches                             # no parentheses: return the function without calling it
+
+
+hall = Venue('Riverside Community Hall')
+hall.add_event(Concert('Friday Night Jazz', date(2026, 12, 5), capacity=40, base_price=25, performer='The Blue Notes'))
+hall.add_event(Screening('Movie Night: Coco', date(2026, 11, 28), capacity=30, base_price=8))
+hall.add_event(MuseumTour('Gallery After Dark', date(2026, 12, 11), price=12))
+
+today = date(2026, 12, 1)
+for event in hall.events:                      # polymorphism: one loop, and each kind of event works out its own answer
+    marker = ' (refundable)' if event.can_refund(today) else ''
+    print(f'{event.name}: ${event.ticket_price()}{marker}')
+# Friday Night Jazz: $30
+# Movie Night: Coco: $8
+# Gallery After Dark: $12 (refundable)
+
+december = hall.find_events(is_in_december)                         # pass the function: no parentheses
+cheap = hall.find_events(lambda event: event.ticket_price() < 10)   # or write it inline with lambda
+november = hall.find_events(matches_month(11))                      # call matches_month to build the test
+print([event.name for event in december])   # ['Friday Night Jazz', 'Gallery After Dark']
+print([event.name for event in cheap])      # ['Movie Night: Coco']
+print([event.name for event in november])   # ['Movie Night: Coco']
+
+by_date = sorted(hall.events, key=lambda event: event.date)         # sorted() calls the key on each event
+print([event.name for event in by_date])    # ['Movie Night: Coco', 'Friday Night Jazz', 'Gallery After Dark']
 ```
-
-### Look these up yourself
-
-- `sorted()`. You need its `key=` and `reverse=` arguments, and no lesson walks
-  through them. Read about it on
-  [W3Schools](https://www.w3schools.com/python/ref_func_sorted.asp).
-- `abc`. The module `ABC` and `abstractmethod` come from. Read the
-  [`ABC`](https://docs.python.org/3/library/abc.html#abc.ABC) and
-  [`abstractmethod`](https://docs.python.org/3/library/abc.html#abc.abstractmethod)
-  entries in the Python docs and skip the rest of that page — the opening is
-  about machinery you do not need yet.
 
 ## From Scratch
 
-Write these functions and classes in `src/from_scratch.py`.
+Write these functions and classes in `src/from_scratch.py`. The questions build one system, so do them in order: Questions 5 to 7 use your answers to Questions 2 and 3.
+
+The examples pass every number and every `True` or `False` by keyword, as in `Scooter("S1", charge=80, needs_repair=False)`, so that each value says what it is. Give each `__init__` parameter the name the examples use, or those tests will not pass.
 
 ### Question 1: `fleet_revenue`
 
-Boro Bikes needs a day's revenue across the whole fleet. The fleet holds three
-kinds of bike, each charging a different hourly rate, and the finance team keeps
-asking for the number.
+Boro Bikes rents three kinds of bike: classic bikes, electric bikes, and cargo bikes. Each kind charges its own hourly rate. **`Bike`, `ClassicBike`, `ElectricBike` and `CargoBike` are already written for you** in `src/from_scratch.py`, and each kind's `hourly_rate()` method returns its rate.
 
-**`Bike`, `ClassicBike`, `ElectricBike` and `CargoBike` are already written for
-you** in `src/from_scratch.py`. Read their `hourly_rate()` methods before you
-start.
+Write a function called `fleet_revenue` that answers the question "how much would these items earn if each one were rented for this many hours?"
 
-Write `fleet_revenue(bikes, hours)`, which returns what the whole list would
-earn if every bike in it were rented for `hours` hours.
+| Write                         | Takes                                 | Does                                                               |
+| ----------------------------- | ------------------------------------- | ------------------------------------------------------------------ |
+| `fleet_revenue(items, hours)` | a list of items and a number of hours | Returns the total of each item's hourly rate multiplied by `hours` |
+
+**Requirements:** Do not use `isinstance()` or `type()` to check which kind of bike an item is. A test checks for this.
 
 ```python
-fleet = [
-    ClassicBike("A1", "Grand Army", False),       # 4.00 an hour
-    ElectricBike("E9", "Borough Hall", False, 24),  # 7.50 an hour
-    CargoBike("C3", "Grand Army", False, 90),     # 5.50 an hour
+items = [
+    ClassicBike("A1", "Grand Army", needs_repair=False),                         # 4.00 an hour
+    ElectricBike("E9", "Borough Hall", needs_repair=False, battery_range=24),    # 7.50 an hour
+    CargoBike("C3", "Grand Army", needs_repair=False, crate_litres=90),          # 5.50 an hour
 ]
 
-fleet_revenue(fleet, 2)          # 34.0 — (4.00 + 7.50 + 5.50) * 2
-fleet_revenue([], 8)             # 0 — an empty fleet earns nothing
+fleet_revenue(items, hours=2)    # Returns 34.0, which is (4.00 + 7.50 + 5.50) * 2
+fleet_revenue([], hours=8)       # Returns 0, because an empty list earns nothing
 ```
-
-**Your loop must not ask what kind of bike it is holding.** No `isinstance()`,
-no `type()`, and no checking a class name. A test checks for this.
-
-Each bike already knows its own rate, so the loop's job is only to ask. That is
-the whole idea: the function works for a kind of bike that does not exist yet,
-as long as that kind answers `hourly_rate()`.
 
 ### Question 2: `Scooter`
 
-Boro Bikes is adding scooters. A scooter is not a bike — it does not dock at a
-station, it has no frame size, and nothing about `Bike` describes it. But the
-revenue report, the rental screen and the maintenance list all have to include
-scooters tomorrow.
+Boro Bikes also rents electric scooters. A scooter has a serial and a charge level, measured as a percentage, and it either needs a repair or does not. A scooter can be rented when it does not need a repair and its charge is at least 20%. Every scooter costs $5.00 an hour. A scooter is not a kind of bike: it is not docked at a station.
 
-Those three places only ever ask a thing two questions: **can I rent it**, and
-**what does it cost an hour**. That pair of method names is the **contract**.
+Write a class called `Scooter` that has a serial, a charge, and whether it needs repair. It should answer the questions "can this scooter be rented?" and "what does this scooter cost an hour?"
 
-Write a class `Scooter` that answers the contract **without inheriting from
-`Bike`**.
+| Write           | Takes                                                    | Does                                                                               |
+| --------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `__init__`      | a serial, a charge, and whether the scooter needs repair | Stores them as `serial`, `charge`, and `needs_repair`                              |
+| `is_rentable()` | nothing                                                  | Returns `True` when the scooter does not need repair and its charge is at least 20 |
+| `hourly_rate()` | nothing                                                  | Returns `5.00`                                                                     |
 
-`__init__` takes a serial, a charge level as a percentage, and a repair flag.
-
-| Method | Does | Returns |
-| --- | --- | --- |
-| `is_rentable()` | A scooter needs no repair and at least 20% charge | `True` or `False` |
-| `hourly_rate()` | Scooters are a flat `5.00` an hour | `5.00` |
+**Requirements:** `Scooter` must **not** inherit from `Bike`. A test checks for this.
 
 ```python
-scooter = Scooter("S1", 80, False)
-scooter.is_rentable()            # True
-scooter.hourly_rate()            # 5.0
+scooter = Scooter("S1", charge=80, needs_repair=False)
+scooter.is_rentable()                                     # Returns True
+scooter.hourly_rate()                                     # Returns 5.0
 
-Scooter("S2", 10, False).is_rentable()   # False — not enough charge
-Scooter("S3", 95, True).is_rentable()    # False — needs repair
+Scooter("S2", charge=10, needs_repair=False).is_rentable()  # Returns False, because its charge is below 20
+Scooter("S3", charge=95, needs_repair=True).is_rentable()   # Returns False, because it needs repair
+isinstance(scooter, Bike)                                   # Returns False
 
-isinstance(scooter, Bike)        # False — it is not a bike and never was
-
-# the same loop works on a list holding both
-sum(item.hourly_rate() for item in [scooter, ClassicBike("A1", "Grand Army", False)])
-# 9.0
+# Your fleet_revenue from Question 1 works on a list of scooters and bikes, unchanged
+fleet_revenue([scooter, ClassicBike("A1", "Grand Army", needs_repair=False)], hours=2)   # Returns 18.0
 ```
-
-This is **duck typing**: the loop does not care what a thing is, only that it
-answers the names the loop uses. `Scooter` passes because it answers them, not
-because of what it inherits.
-
-Notice that a scooter decides `is_rentable()` by its own rule, using charge,
-which no bike has. Two classes can answer the same question for completely
-different reasons. That is the point of asking rather than checking.
 
 ### Question 3: `Rentable` and `Helmet`
 
-The contract in the last question — `is_rentable()` and `hourly_rate()` — is
-written down nowhere. A new engineer added a class, forgot `hourly_rate()`, and
-nothing complained until the revenue report crashed in front of the finance
-team.
+Boro Bikes also rents helmets, at $1.00 an hour. A helmet has a serial, and it can be rented unless it needs cleaning.
 
-An **abstract base class** writes the contract down and refuses to let an
-incomplete class be instantiated at all. The failure moves from the revenue
-report to the line that made the object.
+Everything Boro Bikes rents must be able to say whether it can be rented and what it costs an hour. Those two methods, `is_rentable()` and `hourly_rate()`, are the contract that `fleet_revenue` depends on.
 
-Write `Rentable`, an abstract base class with two abstract methods,
-`is_rentable()` and `hourly_rate()`. Then write `Helmet`, a real subclass of it.
+Write an abstract base class called `Rentable` that names both methods of the contract. Then write a class called `Helmet` that inherits from `Rentable`. A helmet should answer the questions "can this helmet be rented?" and "what does this helmet cost an hour?"
 
-`Helmet.__init__` takes a serial and a `needs_cleaning` flag.
+| Class      | Write           | Takes                                           | Does                                                  |
+| ---------- | --------------- | ----------------------------------------------- | ----------------------------------------------------- |
+| `Rentable` | `is_rentable()` | nothing                                         | An abstract method                                    |
+| `Rentable` | `hourly_rate()` | nothing                                         | An abstract method                                    |
+| `Helmet`   | `__init__`      | a serial, and whether the helmet needs cleaning | Stores them as `serial` and `needs_cleaning`          |
+| `Helmet`   | `is_rentable()` | nothing                                         | Returns `True` when the helmet does not need cleaning |
+| `Helmet`   | `hourly_rate()` | nothing                                         | Returns `1.00`                                        |
 
-| Class | Member | Returns |
-| --- | --- | --- |
-| `Rentable` | `is_rentable()` | abstract — no body |
-| `Rentable` | `hourly_rate()` | abstract — no body |
-| `Helmet` | `is_rentable()` | `True` unless it needs cleaning |
-| `Helmet` | `hourly_rate()` | `1.00` |
+`ABC` and `abstractmethod` are already imported at the top of `src/from_scratch.py`.
 
 ```python
-helmet = Helmet("H1", False)
-helmet.is_rentable()             # True
-helmet.hourly_rate()             # 1.0
-Helmet("H2", True).is_rentable() # False
+helmet = Helmet("H1", needs_cleaning=False)
+helmet.is_rentable()                               # Returns True
+helmet.hourly_rate()                               # Returns 1.0
+Helmet("H2", needs_cleaning=True).is_rentable()    # Returns False
+isinstance(helmet, Rentable)                       # Returns True
 
-Rentable()                       # TypeError — abstract, so it cannot be made
-
-class Towel(Rentable):           # forgets hourly_rate
-    def is_rentable(self):
-        return True
-
-Towel()                          # TypeError, and it names the missing method
+Rentable()
+# TypeError: Can't instantiate abstract class Rentable without an implementation for abstract methods 'hourly_rate', 'is_rentable'
 ```
 
-`ABC` and `abstractmethod` both come from Python's `abc` module:
+### Question 4: Testing `Rentable`
+
+Everything Boro Bikes rents must define `is_rentable()` and `hourly_rate()`. An abstract base class that enforces this contract keeps two promises: it refuses a subclass that is missing one of the methods, and it allows a subclass that defines both. A mistake in the abstract base class can break either promise, so each promise needs its own test.
+
+Write two pytest tests that answer the questions "is a subclass missing `hourly_rate()` refused?" and "is a subclass that defines both methods allowed?" Write them in `my_tests/test_rentable.py`, which already imports `pytest` and `Rentable` and names both tests for you.
+
+| Write                                                     | Does                                                                                                                                                                    |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `test_a_rentable_missing_hourly_rate_cannot_be_created()` | Defines a subclass of `Rentable` inside the test that defines only `is_rentable()`, and uses `pytest.raises(TypeError)` to check that creating one raises a `TypeError` |
+| `test_a_complete_rentable_can_be_created()`               | Defines a subclass of `Rentable` inside the test that defines both methods, creates one, and asserts the value its `hourly_rate()` returns                              |
+
+Run your tests with:
+
+```sh
+pytest my_tests
+```
+
+Both tests should pass once your `Rentable` from Question 3 works. The assignment's own tests then check each of your tests twice: once against a `Rentable` that works, where it must pass, and once against a `Rentable` that breaks the rule it checks, where it must fail. The first test must fail against a `Rentable` whose `hourly_rate()` is not abstract. The second test must fail against a `Rentable` that refuses every subclass.
+
+> Your tests go in `my_tests/` rather than `tests/` because `tests/` is replaced with the assignment's own tests when your work is graded, so anything you write there is lost.
+
+### Question 5: `Fleet`
+
+Boro Bikes keeps every bike, scooter and helmet it rents in one fleet. Staff search the fleet with many different questions: which items can be rented right now, which items cost less than $5.00 an hour, which items are scooters.
+
+Write a class called `Fleet` that has a list of items. It should answer any question of the form "which items in the fleet match this test?", where the caller passes the test in as a function.
+
+**`is_cheap(item)` is already written for you** in `src/from_scratch.py`. It returns `True` when an item costs less than $5.00 an hour.
+
+| Write                 | Takes                                                        | Does                                                                         |
+| --------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| `Fleet.__init__`      | nothing                                                      | Starts an empty list of items as `items`                                     |
+| `Fleet.add(item)`     | one bike, scooter, or helmet                                 | Adds the item to the end of `items`                                          |
+| `Fleet.find(matches)` | a function that takes one item and returns `True` or `False` | Returns a **new** list of the items for which `matches(item)` returns `True` |
 
 ```python
-from abc import ABC, abstractmethod
+fleet = Fleet()
+fleet.add(ClassicBike("A1", "Grand Army", needs_repair=False))                     # 4.00 an hour
+fleet.add(ElectricBike("E9", "Borough Hall", needs_repair=True, battery_range=24))  # 7.50 an hour
+fleet.add(Scooter("S1", charge=80, needs_repair=False))                             # 5.00 an hour
+fleet.add(Helmet("H1", needs_cleaning=False))                                       # 1.00 an hour
+
+cheap = fleet.find(is_cheap)
+for item in cheap:
+    print(item.serial)
+# A1
+# H1
+
+rentable = fleet.find(lambda item: item.is_rentable())
+for item in rentable:
+    print(item.serial)
+# A1
+# S1
+# H1
+
+scooters = fleet.find(lambda item: item.serial.startswith("S"))
+for item in scooters:
+    print(item.serial)
+# S1
 ```
 
-A class inheriting `ABC` with at least one `@abstractmethod` cannot be
-instantiated, and neither can a subclass that leaves one unimplemented. You do
-not write that error — Python raises it, and the message names what is missing.
+### Question 6: Sorting the Fleet
 
-Use `pass` for each abstract method's body. The method exists to be named in the
-contract, not to do anything.
+Staff also list the fleet from the cheapest item to the most expensive, and look up the single most expensive item.
 
-### Question 4: `cheapest_first`
+Add two methods to your `Fleet`. **`rate_of(item)` is already written for you** in `src/from_scratch.py`. It returns an item's hourly rate.
 
-The rental screen shows the fleet cheapest first. `sorted()` can do this, but
-only if you tell it what to sort by, because a `Bike` is not a number and Python
-will not guess.
+| Write                    | Takes    | Does                                                                            |
+| ------------------------ | -------- | ------------------------------------------------------------------------------- |
+| `Fleet.cheapest_first()` | nothing  | Returns a **new** list of the items, from the lowest hourly rate to the highest |
+| `Fleet.priciest()`       | nothing  | Returns the one item with the highest hourly rate                               |
 
-`sorted(items, key=...)` takes a **function** as its `key`. It calls that
-function on each item and sorts by what comes back. A function that takes
-another function like this is a **higher-order function**.
+**Requirements:** Tests check both of these.
 
-Write the same sort twice, so you have both forms.
-
-**`Bike` and its three subclasses are already written for you.**
-
-| Write | Does |
-| --- | --- |
-| `rate_of(bike)` | Returns one bike's hourly rate. A plain named function |
-| `cheapest_first(bikes)` | Returns a **new** list sorted by rate, passing `rate_of` as the key |
-| `cheapest_first_lambda(bikes)` | The same thing, with a `lambda` written inline as the key |
+- `cheapest_first()` calls `sorted()` with `rate_of` as the key.
+- `priciest()` calls `max()` with a `lambda` as the key.
 
 ```python
-fleet = [
-    ElectricBike("E9", "Borough Hall", False, 24),  # 7.50
-    ClassicBike("A1", "Grand Army", False),         # 4.00
-    CargoBike("C3", "Grand Army", False, 90),       # 5.50
-]
+# the same fleet as Question 5
+by_rate = fleet.cheapest_first()
+for item in by_rate:
+    print(item.serial)
+# H1
+# A1
+# S1
+# E9
 
-[bike.serial for bike in cheapest_first(fleet)]
-# ["A1", "C3", "E9"]
+priciest = fleet.priciest()
+print(priciest.serial)
+# E9
 
-[bike.serial for bike in cheapest_first_lambda(fleet)]
-# ["A1", "C3", "E9"] — same answer
-fleet[0].serial                  # "E9" — sorted() left the original alone
+for item in fleet.items:   # still in the order the items were added
+    print(item.serial)
+# A1
+# E9
+# S1
+# H1
 ```
 
-Pass `rate_of`, do not call it. `key=rate_of` hands `sorted` the function.
-`key=rate_of(bike)` calls it immediately and hands over a number, which is the
-most common mistake with higher-order functions and the subject of a later
-question.
+### Question 7: `costs_less_than`
 
-The two versions behave identically. A `lambda` is worth using when the function
-is this short and needed in exactly one place; a named function is worth it when
-the name explains something or you need it twice.
+Staff search the fleet for items under many different hourly rates: under $2.00, under $5.00, under $8.00. `find()` calls its callback with one argument, the item, so the callback cannot also receive the limit.
+
+Write a function called `costs_less_than` that takes a limit and returns a new function. The function it returns answers the question "does this item cost less than the limit an hour?", and it can be passed straight to `find()`.
+
+| Write                    | Takes          | Does                                                                                                       |
+| ------------------------ | -------------- | ---------------------------------------------------------------------------------------------------------- |
+| `costs_less_than(limit)` | an hourly rate | Returns a function that takes one item and returns `True` when the item's hourly rate is less than `limit` |
+
+```python
+# the same fleet as Question 5
+under_five = fleet.find(costs_less_than(5.00))
+for item in under_five:
+    print(item.serial)
+# A1
+# H1
+
+under_two = fleet.find(costs_less_than(2.00))
+for item in under_two:
+    print(item.serial)
+# H1
+
+under_eight = costs_less_than(8.00)
+print(under_eight(Scooter("S1", charge=80, needs_repair=False)))   # True
+```
 
 ## Modify
 
-Change the code already in `src/modify.py`.
+Change the code in `src/modify.py`. Its classes are separate from your From Scratch answers, so you can start here before From Scratch is finished.
 
-### Question 5: `late_fee`
+### Question 8: `late_fee`
 
-`late_fee` charges a different amount per late hour depending on the kind of
-bike, and it decides by asking what kind it is holding. Adding scooters next
-week means editing this function, and every other function shaped like it.
+Boro Bikes charges a late fee for every hour a bike is returned late. A classic bike's late fee is $1.50 an hour, an electric bike's is $4.50 an hour, and a cargo bike's is $2.50 an hour.
 
-Move each fee onto the class it belongs to, so `late_fee` does not have to ask.
+`late_fee(bike, hours)` in `src/modify.py` works out the fee with an `isinstance()` chain. Move each fee onto the class it belongs to, so that `late_fee` calls a method on the bike instead of checking its class.
 
-The code is in `src/modify.py`. When you are done:
+**Requirements:**
 
-- Each of the three classes has a `late_fee_per_hour()` method returning its own
-  fee.
-- `late_fee(bike, hours)` has no `isinstance` and no `type` in it, and still
-  returns the same numbers.
+- `Bike`, `ClassicBike`, `ElectricBike` and `CargoBike` each have a `late_fee_per_hour()` method that returns that kind's fee per hour. `Bike`'s returns `0.00`, the value of the chain's `else` branch.
+- `late_fee(bike, hours)` has no `isinstance()` and no `type()` in it.
+
+These lines must give the same results before and after your change:
 
 ```python
-late_fee(ClassicBike("A1", "Grand Army", False), 2)        # 3.0
-late_fee(ElectricBike("E9", "Borough Hall", False, 24), 2) # 9.0
-late_fee(CargoBike("C3", "Grand Army", False, 90), 2)      # 5.0
+late_fee(ClassicBike("A1", "Grand Army", needs_repair=False), hours=2)                        # Returns 3.0
+late_fee(ElectricBike("E9", "Borough Hall", needs_repair=False, battery_range=24), hours=2)   # Returns 9.0
+late_fee(CargoBike("C3", "Grand Army", needs_repair=False, crate_litres=90), hours=2)         # Returns 5.0
+late_fee(Bike("B0", "Grand Army", needs_repair=False), hours=5)                               # Returns 0.0
 ```
-
-Same answers as now — this is a refactor, so the numbers must not move.
-
-The fees are in the function today, so read them out of it rather than inventing
-them.
-
-Ask yourself where a fee belongs. A classic bike's late fee is a fact about
-classic bikes, so it belongs on `ClassicBike`, not in a function that has to be
-told about every kind of bike that will ever exist.
-
-### Question 6: `Station.bikes_where`
-
-`Station` has three methods that are the same loop three times. Each one walks
-the station's bikes, keeps the ones matching a condition, and returns a new
-list. Only the condition differs.
-
-The next request will be "bikes under 5.00 an hour", and the answer should not
-be a fourth copy of the loop.
-
-Replace all three with **one method that takes the condition as an argument**.
-The method is waiting in `src/modify.py`.
-
-```python
-station = Station("Grand Army")
-station.dock(Bike("A1", "Grand Army", False))
-station.dock(Bike("A2", "Grand Army", True))
-
-[b.serial for b in station.bikes_where(lambda bike: bike.is_rentable())]
-# ["A1"]
-
-[b.serial for b in station.bikes_where(lambda bike: bike.needs_repair)]
-# ["A2"]
-
-def is_cheap(bike):
-    return bike.hourly_rate() < 5.00
-
-[b.serial for b in station.bikes_where(is_cheap)]
-# ["A1", "A2"] — a condition the class was never written for
-
-station.bikes_where(lambda bike: False)   # [] — nothing matches
-```
-
-**Delete `rentable`, `repair_list` and `at_station` when you are done.** A test
-checks they are gone.
-
-`bikes_where` takes a function and calls it on each bike, keeping the bike when
-the call returns true. A method that takes a function like this is a
-**higher-order function**, and it turns a class that answers three fixed
-questions into one that answers any question of that shape.
-
-Call the parameter something that says what it is for, such as `test` or
-`matches`. It is a function, so you call it: `test(bike)`.
-
-### Question 7: `make_discounter`
-
-`discounted_price` takes a price and a discount. Every caller in the member
-area passes `0.10`, and every caller in the staff area passes `0.25`. The
-discount is passed thousands of times a day and it never changes.
-
-Rewrite it so the discount is given **once**, and what comes back is a function
-that only needs a price.
-
-The code is in `src/modify.py`. When you are done:
-
-- `make_discounter(discount)` returns a **function** that takes a price.
-- `member_price` and `staff_price` are built from it, at the bottom of the file.
-- `discounted_price` is **deleted**. A test checks it is gone.
-
-```python
-member_price = make_discounter(0.10)
-staff_price = make_discounter(0.25)
-
-member_price(20.00)              # 18.0
-staff_price(20.00)               # 15.0
-member_price(20.00)              # 18.0 — still 10%, building the second changed nothing
-```
-
-`make_discounter` has returned long before `member_price(20.00)` runs, so its
-local `discount` should be gone. The inner function reads it anyway.
-
-That is a **closure**: an inner function keeps access to the variables of the
-function that built it, for as long as the inner function exists. Each call to
-`make_discounter` makes a new one with its own `discount`, which is why
-`member_price` and `staff_price` never interfere.
-
-Return the inner function. Do not call it.
-
-Keep the rounding exactly as it is — this is a refactor, so the prices must not
-move.
 
 ## Debug
 
 Fix the code in `src/debug.py`.
 
-### Question 8: `restock_message`
+### Question 9: `charging_list`
 
-`restock_message` asks `message_if` to build a warning when a station is low on
-bikes. It raises:
-
-```python
-restock_message(Station("Grand Army", 1))
-# TypeError: 'bool' object is not callable
-```
-
-Read the message literally. Something is being called, and the thing being
-called is a `bool`. `message_if` calls what it is handed. So what did it get
-handed?
-
-Fix `restock_message` in `src/debug.py`.
+A scooter needs charging when its charge is below 20%. `charging_list(scooters)` should return the scooters that need charging. It raises an error instead:
 
 ```python
-restock_message(Station("Grand Army", 1))     # "Grand Army: send bikes"
-restock_message(Station("Borough Hall", 9))   # "Borough Hall: ok"
+scooters = [
+    Scooter("S1", charge=80, needs_repair=False),
+    Scooter("S2", charge=10, needs_repair=False),
+]
+low = charging_list(scooters)
+for scooter in low:
+    print(scooter.serial)
+# Should print S2, but the first line raises:
+# TypeError: needs_charging() missing 1 required positional argument: 'scooter'
 ```
 
-`station.is_low` is the **function**. `station.is_low()` is the `True` or
-`False` that calling it produced. `message_if` needs the first one, because it
-decides for itself when to call it.
+**Requirements:** Fix `charging_list`. Leave `needs_charging` and `scooters_where` as they are, because both are correct.
 
-This is the most common mistake with higher-order functions, and Python cannot
-warn you where you make it. Passing a value where a function was wanted is only
-discovered later, when something tries to call that value — which is why the
-traceback points at `message_if`, a function that is not wrong.
-
-`message_if` and `Station` are both correct. Two characters are the whole bug.
-
-### Question 9: `Screening`
-
-`Rental` is an abstract base class naming the two methods every rentable thing
-must answer. `Tandem` works. `Screening`, added last week, does not:
-
-```python
-Screening("SC1", 40)
-# TypeError: Can't instantiate abstract class Screening without an
-# implementation for abstract method 'hourly_rate'
-```
-
-This error is the abstract base class doing its job. The class is incomplete,
-and Python refused to make one rather than letting a half-built object into the
-fleet and crashing later in `fleet_total`.
-
-Fix `Screening` in `src/debug.py`. A screening costs `6.00` an hour.
-
-```python
-screening = Screening("SC1", 40)
-screening.hourly_rate()          # 6.0
-screening.is_rentable()          # True — 40 seats left
-
-Screening("SC2", 0).is_rentable()  # False — sold out
-
-fleet_total([Tandem("T1", False), Screening("SC1", 40)], 2)   # 25.0
-```
-
-Read the error message rather than guessing. It names the class it could not
-build and the exact method that is missing, which is more than most Python
-errors tell you.
-
-Do not fix this by removing `@abstractmethod` from `Rental`, and do not stop
-`Screening` inheriting from it. Either one makes the error go away and puts the
-crash back in `fleet_total`, which is what the abstract base class was added to
-prevent.
+> Hint: read the message in two parts: which function was called, and what that call left out. Then find the line in `charging_list` where that call happens.
 
 ## Submitting
 
@@ -517,10 +482,8 @@ git commit -m "your message"
 git push
 ```
 
-Pushing runs the tests on GitHub. Check the **Actions** tab to see which
-passed, then open a pull request to your instructor for feedback.
+Pushing runs the tests on GitHub. Check the **Actions** tab to see which passed, then open a pull request to your instructor for feedback.
 
 ## Good luck!
 
-Every system you build from here is made of classes, so this is the
-assignment the rest of the module stands on. You got this!
+You got this!

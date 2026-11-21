@@ -1,3 +1,5 @@
+# Write each class and function below. The README says what each one stores and does.
+# The questions build one system, so do them in order: later questions use your earlier answers.
 from abc import ABC, abstractmethod
 
 
@@ -49,7 +51,7 @@ class CargoBike(Bike):
         return super().hourly_rate() + 2.50
 
 
-def fleet_revenue(bikes, hours):
+def fleet_revenue(items, hours):
     pass
 
 
@@ -65,13 +67,19 @@ class Helmet:
     pass
 
 
-def rate_of(bike):
+class Fleet:
     pass
 
 
-def cheapest_first(bikes):
-    pass
+def is_cheap(item):
+    """Already written for you. Do not change it."""
+    return item.hourly_rate() < 5.00
 
 
-def cheapest_first_lambda(bikes):
+def rate_of(item):
+    """Already written for you. Do not change it."""
+    return item.hourly_rate()
+
+
+def costs_less_than(limit):
     pass
